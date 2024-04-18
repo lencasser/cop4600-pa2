@@ -27,6 +27,13 @@ uint32_t jenkins_hash(char *key, size_t length) {
     return hash;
 }
 
+list * create_list() {
+    list *ret = (list *) malloc(sizeof(list));
+    ret->head = NULL;
+    ret->lock = (rwlock_t *) malloc(sizeof(rwlock_t));
+    rwlock_init(ret->lock);
+}
+
 hashRecord * create_record(char *key, uint32_t value, uint32_t hash) {
     hashRecord *ret = (hashRecord *) malloc(sizeof(hashRecord));
     strcpy(ret->name, key);
