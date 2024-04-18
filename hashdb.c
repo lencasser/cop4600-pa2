@@ -4,11 +4,13 @@
 // come back to it when i'm less stupid tomorrow
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include "hashdb.h"
 #include "rwlocks.h"
 
-uint32_t jenkins_hash(const uint8_t *key, size_t length) {
+uint32_t jenkins_hash(char *key, size_t length) {
     size_t i = 0;
     uint32_t hash = 0;
     
@@ -54,8 +56,8 @@ void insert(char *key, int value, hashRecord *head) {
         cur->salary = value;
     }
     else { 
-        if(head == NULL) // TODO: empty case
-        else if (head->next == NULL) // TODO: one node case
+        if(head == NULL) ; // TODO: empty case
+        else if (head->next == NULL) ; // TODO: one node case
         else {
             // i'm doing it like this since it has to be in sorted order
             // again i am SO sorry if i'm missing something obvious here
