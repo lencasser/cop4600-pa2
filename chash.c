@@ -67,14 +67,15 @@ int main (void) {
 
     in = fopen("commands.txt", "r");
 
-    char currentWord[100];
+    char currentWord[10000];
     char currChar;
     int currentWordIdx = 0;
     int state = 0;
-    char currCommand[100];
-    char currParameter1[100];
-    char currParameter2[200];
+    char currCommand[1000];
+    char currParameter1[1000];
+    char currParameter2[1000];
     int i = 0;
+    int j = 0;
 
     // creating hash table in advance wee
     list *table = create_list();
@@ -94,7 +95,7 @@ int main (void) {
     }
 
     i++;
-    for (int j=0;currentWord[i] != ',';i++) {
+    for (j=0;currentWord[i] != ',';i++) {
         currParameter1[j] = currentWord[i];
         j++;
     }
@@ -103,32 +104,48 @@ int main (void) {
 
     printf("Starting %s with count %d/%s\n",currCommand,threadCount,currParameter1);
 
-    fgets(currentWord,1000,(FILE*)in);
-    printf("%s", currentWord);
 
     while(currentWord != NULL) { //If we're not at the end of the file yet
-        
+        if(!fgets(currentWord,1000,(FILE*)in)) break;
+
+        printf("%s\n", currentWord);
+
+        i=0;
+        strcpy(currCommand,"");
+        strcpy(currParameter1,"");
+        strcpy(currParameter2,"");
+
+        //printf("earlyCommand: %s\n", currCommand);
+
         for (i=0;currentWord[i] != ',';i++) {
             currCommand[i] = currentWord[i];
         }
+        currCommand[i] = '\0';
 
-        i++;
+        printf("currComand: %s\n", currCommand);
 
-        for (int j=0;currentWord[i] != ',';i++) {
+        i++; //Move index out of ','
+
+        for (j=0;currentWord[i] != ',';i++) {
             currParameter1[j] = currentWord[i];
             j++;
         }
+        currParameter1[j] = '\0';
 
-        i++;
+        printf("curr1: %s\n", currParameter1);
 
-        for (int j=0;currentWord[i] != ',';i++) {
+        i++; //Move index out of ','
+
+        for (j=0;currentWord[i] != '\n';i++) {
             currParameter2[j] = currentWord[i];
             j++;
         }
+        currParameter2[j] = '\0';
 
-        parseCommand(currCommand,currParameter1,currParameter2, table);
+        printf("%s%s%s\n", currCommand,currParameter1,currParameter2);
+
+        //parseCommand(currCommand,currParameter1,currParameter2, table);
         
-        //printf("%s", inputString);
     }
 
 
