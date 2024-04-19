@@ -3,6 +3,9 @@
 // feel free to fix anything in the meantime, if not i'll just
 // come back to it when i'm less stupid tomorrow
 
+// this file has said "less stupid tomorrow" for 2 days now.
+// will the day i become less stupid ever come?
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -42,44 +45,77 @@ hashRecord * create_record(char *key, uint32_t value, uint32_t hash) {
     hashRecord *ret = (hashRecord *) malloc(sizeof(hashRecord));
     strcpy(ret->name, key);
     ret->salary = value;
-    ret -> hash = hash;
+    ret->hash = hash;
+    ret->next = NULL;
     return ret;
 }
 
-// the wikipedia jenkins hash got in my head and i originally had
-// the key as const uint8_t. then i changed it to char in accordance
-// with the struct. will i change it after i take a nap?
-// nobody nose 0>0 (nose) - my condolences
-
-// still have to account for empty list / one node list
+// NOTE: char *key is const uint8_t in wikipedia hash func. if issues
+// arise, maybe change back, but hey. what could happpen. ahfhfhgh
 void insert(char *key, int value, list *table) {
     uint32_t hash = jenkins_hash(key, strlen(key));
     // TODO: write writer lock acquisition
 
+    // this is so convoluted i'm so sorry
     hashRecord *cur = table->head;
     hashRecord *tmp;
     hashRecord *prev;
 
-    // tbh i don't think search function is the ideal way to do this,
-    // but then why search function.
-    if(search(key, table)) {
-        while(cur->hash != hash) cur = cur->next;
-        cur->salary = value;
+    // store the pointer to avoid searching twice.
+    // the thing i use tmp for varies which is confusing but i'm tired
+    tmp = search(key, table);
+    if(tmp != NULL) {
+        // go straight to the record and update it... i guess
+        tmp->salary = value;
     }
+    // hash not in table
     else { 
-        if(table->head == NULL) ; // TODO: empty case
-        else if (table->head->next == NULL) ; // TODO: one node case
+        if(table->head == NULL) {
+            // empty case
+            tmp = create_record(key, value, hash);
+            table->head = tmp;
+        }
+        // one node case
+        else if (table->head->next == NULL) {
+            tmp = create_record(key, value, hash);
+
+            if(table->head->hash < hash) {
+                // tmp has a smaller hash value, insert at front
+                tmp->next = table->head;
+                table->head = tmp;
+            }
+            // tmp larger, insert after head
+            else table->head->next = tmp;
+        }
         else {
-            // i'm doing it like this since it has to be in sorted order
-            // again i am SO sorry if i'm missing something obvious here
-            while(cur->hash < hash && cur->next->hash < hash)
+            // i'm doing it like this since it has to be in sorted order..
+            // this is fucked up but i'm basically trying to find where to
+            // insert the node i guess
+            while(cur->next != NULL && cur->hash <= hash)
                 cur = cur->next;
             tmp = create_record(key, value, hash);
+
+            // our hash is smaller than head, i think...
             if(cur == table->head) {
-                // TODO
+                // is this logic even correct??ugh
+                tmp->next = table->head;
+                table->head = tmp;
             }
             else {
-                // pukes and dies
+                // a) the nice case. we are at the end of the list.
+                if(cur->next == NULL) cur->next = tmp;
+
+                // b) i am but god's little jester, powerless before the 
+                //    cop4600 sandwich.
+                else {
+                    // i may be making a sloppy mistake here but i'm basically
+                    // trying to disassemble the list and then reattach it
+                    // with the new node sandwiched in the middle
+                    prev = cur;
+                    cur = cur->next;
+                    prev->next = tmp;
+                    tmp->next = cur;
+                }
             }
         }
     }
@@ -88,24 +124,33 @@ void insert(char *key, int value, list *table) {
 }
 
 void delete(char *key) {
-    // TODO
+    // TODO. probably a similar code to the node sandwich where we
+    // store each side and reattach
 }
 
-uint32_t search(char *key, list *table) {
-    uint32_t hash = jenkins_hash(key, strlen(key));
-    // TODO: reader lock acquisition
-    hashRecord *cur = table->head;
+hashRecord * search(char *key, list *table) {
+    if(table->head == NULL) return NULL;
 
+    // step 1: compute hash value
+    uint32_t hash = jenkins_hash(key, strlen(key));
+
+    // TODO: reader lock acquisition
+
+    // iterate through list & compare hash
+    hashRecord *cur = table->head;
     while(cur->next != NULL) {
         if(cur->hash != hash) {
             cur = cur->next;
         }
         else {
-            // TODO: whatever the format of the record printing is
-            return hash;
+            // print hash, name, and salary of the record, then return
+            printf("%d,%s,%d\n", cur->hash, cur->name, cur->salary);
+            //TODO: lock release
+            
+            return cur;
         }
     }
     printf("No Record Found\n");
     // TODO: lock release
-    return 0;
+    return NULL;
 }
