@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "hashdb.h"
+#include "rwlocks.h"
 
 uint32_t jenkins_hash(char *key, size_t length) {
     size_t i = 0;
@@ -37,8 +38,8 @@ list * create_list() {
     // example but it's not working and some guy in the discord didn't
     // have the lock in their list struct and i trust them with my life
 
-    //ret->lock = (rwlock_t *) malloc(sizeof(rwlock_t));
-    //rwlock_init(ret->lock);
+    ret->lock = (rwlock_t *) malloc(sizeof(rwlock_t));
+    rwlock_init(ret->lock);
 }
 
 hashRecord * create_record(char *key, uint32_t value, uint32_t hash) {
@@ -124,12 +125,30 @@ void insert(char *key, int value, list *table) {
 }
 
 void delete(char *key, list *table) {
-    // TODO. probably a similar code to the node sandwich where we
-    // store each side and reattach
+    uint32_t hash = jenkins_hash(key, strlen(key));
+    // TODO: writer lock acquisition
     hashRecord *tmp = search(key, table);
+    hashRecord *cur = table->head;
     if(tmp != NULL) {
-        ; // TODO
+        if(tmp->next == NULL) {
+            // tmp is only list item
+            table->head = NULL;
+            free(tmp);
+        }
+        else {
+            // this is so inefficient but today is not the day i
+            // become smart either
+            while (cur->next != NULL && cur->next->hash != hash) {
+                // should already be sorted by hash or so i hope :(
+                if(cur->hash < hash) cur = cur->next;
+            }
+            // connecting the 2 nodes around tmp
+            cur->next = tmp->next;
+            free(tmp);
+        }
     }
+    // TODO: release write lock
+    return;
 }
 
 hashRecord * search(char *key, list *table) {
