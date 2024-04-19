@@ -123,9 +123,13 @@ void insert(char *key, int value, list *table) {
     return;
 }
 
-void delete(char *key) {
+void delete(char *key, list *table) {
     // TODO. probably a similar code to the node sandwich where we
     // store each side and reattach
+    hashRecord *tmp = search(key, table);
+    if(tmp != NULL) {
+        ; // TODO
+    }
 }
 
 hashRecord * search(char *key, list *table) {
