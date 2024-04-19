@@ -13,7 +13,7 @@ typedef struct hash_struct {
 
 typedef struct list {
     hashRecord *head;
-    //rwlock_t *lock; // ugh
+    rwlock_t *lock; // ugh
 } list;
 
 extern uint32_t jenkins_hash(char *key, size_t length);
