@@ -37,8 +37,8 @@ list * create_list() {
     // example but it's not working and some guy in the discord didn't
     // have the lock in their list struct and i trust them with my life
 
-    //ret->lock = (rwlock_t *) malloc(sizeof(rwlock_t));
-    //rwlock_init(ret->lock);
+    ret->lock = (rwlock_t *) malloc(sizeof(rwlock_t));
+    rwlock_init(ret->lock);
 }
 
 hashRecord * create_record(char *key, uint32_t value, uint32_t hash) {
