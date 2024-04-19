@@ -8,7 +8,6 @@
 #include <stdint.h>
 #include <string.h>
 #include "hashdb.h"
-#include "rwlocks.h"
 
 uint32_t jenkins_hash(char *key, size_t length) {
     size_t i = 0;
@@ -30,8 +29,13 @@ uint32_t jenkins_hash(char *key, size_t length) {
 list * create_list() {
     list *ret = (list *) malloc(sizeof(list));
     ret->head = NULL;
-    ret->lock = (rwlock_t *) malloc(sizeof(rwlock_t));
-    rwlock_init(ret->lock);
+    
+    // originally had the below lines bc of the powerpoint lock LL 
+    // example but it's not working and some guy in the discord didn't
+    // have the lock in their list struct and i trust them with my life
+
+    //ret->lock = (rwlock_t *) malloc(sizeof(rwlock_t));
+    //rwlock_init(ret->lock);
 }
 
 hashRecord * create_record(char *key, uint32_t value, uint32_t hash) {
@@ -48,30 +52,30 @@ hashRecord * create_record(char *key, uint32_t value, uint32_t hash) {
 // nobody nose 0>0 (nose) - my condolences
 
 // still have to account for empty list / one node list
-void insert(char *key, int value, hashRecord *head) {
+void insert(char *key, int value, list *table) {
     uint32_t hash = jenkins_hash(key, strlen(key));
     // TODO: write writer lock acquisition
 
-    hashRecord *cur = head;
+    hashRecord *cur = table->head;
     hashRecord *tmp;
     hashRecord *prev;
 
     // tbh i don't think search function is the ideal way to do this,
     // but then why search function.
-    if(search(key, head)) {
+    if(search(key, table)) {
         while(cur->hash != hash) cur = cur->next;
         cur->salary = value;
     }
     else { 
-        if(head == NULL) ; // TODO: empty case
-        else if (head->next == NULL) ; // TODO: one node case
+        if(table->head == NULL) ; // TODO: empty case
+        else if (table->head->next == NULL) ; // TODO: one node case
         else {
             // i'm doing it like this since it has to be in sorted order
             // again i am SO sorry if i'm missing something obvious here
             while(cur->hash < hash && cur->next->hash < hash)
                 cur = cur->next;
             tmp = create_record(key, value, hash);
-            if(cur == head) {
+            if(cur == table->head) {
                 // TODO
             }
             else {
@@ -87,14 +91,14 @@ void delete(char *key) {
     // TODO
 }
 
-uint32_t search(char *key, hashRecord *head) {
+uint32_t search(char *key, list *table) {
     uint32_t hash = jenkins_hash(key, strlen(key));
     // TODO: reader lock acquisition
-    hashRecord *cur = head;
+    hashRecord *cur = table->head;
 
-    while(head->next != NULL) {
+    while(cur->next != NULL) {
         if(cur->hash != hash) {
-            head = head->next;
+            cur = cur->next;
         }
         else {
             // TODO: whatever the format of the record printing is
