@@ -1,1 +1,1 @@
-MakeFile
+gcc -pthread *filename*
