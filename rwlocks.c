@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include "rwlocks.h"
 
 void rwlock_init(rwlock_t *lock) {

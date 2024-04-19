@@ -6,7 +6,7 @@
 #include "hashdb.h"
 #include "hashdb.c"
 #include "rwlocks.h"
-#include "rwlocks.c"
+
 
 void print() {
     

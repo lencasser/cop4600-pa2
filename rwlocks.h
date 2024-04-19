@@ -1,3 +1,6 @@
+#ifndef RWLOCK_H_INCLUDE
+#define RWLOCK_H_INCLUDE
+
 #include <semaphore.h>
 
 typedef struct _rwlock_t {
@@ -22,3 +25,5 @@ void rwlock_release_readlock(rwlock_t *lock);
 void rwlock_acquire_writelock(rwlock_t *lock);
 //releases the lock for a writer
 void rwlock_release_writelock(rwlock_t *lock);
+
+#endif
