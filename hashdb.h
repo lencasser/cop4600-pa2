@@ -1,4 +1,8 @@
+#ifndef _HASHDB_H
+#define _HASHDB_H
 #include <stdint.h>
+#include "rwlocks.h"
+
 
 typedef struct hash_struct {
     uint32_t hash;
@@ -9,14 +13,14 @@ typedef struct hash_struct {
 
 typedef struct list {
     hashRecord *head;
-    rwlock_t *lock; // this doesn't work i'm prob doing smth dumb
+    //rwlock_t *lock; // ugh
 } list;
-
-// depending on how the lock stuff works might add a list struct?
 
 extern uint32_t jenkins_hash(char *key, size_t length);
 extern list * create_list();
 extern hashRecord * create_record(char *key, uint32_t value, uint32_t hash);
-extern void insert(char *key, int value, hashRecord *head);
+extern void insert(char *key, int value, list *table);
 extern void delete(char *key);
-extern uint32_t search(char *key, hashRecord *head);
+extern uint32_t search(char *key, list *table);
+
+#endif
