@@ -1,2 +1,8 @@
 # cop4600-pa2
-concurrent hash table type beat
+run:
+
+make
+
+and then:
+
+./a.out
