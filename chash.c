@@ -14,8 +14,10 @@
 
 
 void finalPrint(list *table) {
-    printf("Number of lock acquisitions: %d\n", lock_acquisitions); //TODO count number of lock acquisitions and releases
-    printf("Number of lock releases: %d\n", lock_releases);
+    //printf("Number of lock acquisitions: %d\n", lock_acquisitions); //TODO count number of lock acquisitions and releases
+    //printf("Number of lock releases: %d\n", lock_releases);
+    // HAS ERROR NOW FOR SOME REASON i'm scared to touch it
+
     print(table);
 }
 
@@ -29,8 +31,6 @@ struct parseParams
 
 
 void parseCommand(char* currCommand, char* currParameter1, char* currParameter2, list *table) {
-    
-    printf("Command: %s\n", currCommand);
     
     if (strcmp(currCommand,"insert")==0) {
         int value = atoi(currParameter1);
@@ -76,9 +76,6 @@ void *parseCommandThreadWrapper(void *arg)
 }
 
 int main (void) {
-
-    printf("Starting up\n");
-
     FILE *in;
 
     in = fopen("commands.txt", "r");
@@ -101,7 +98,6 @@ int main (void) {
     // Read the content and print it
     //fscanf(in, "%s", currentWord);
     fgets(currentWord,1000,in);
-    printf("%s",currentWord);
 
     for (i=0;currentWord[i] != ',';i++) {
         currCommand[i] = currentWord[i];
@@ -120,7 +116,8 @@ int main (void) {
 
     int threadCount = atoi(currParameter1);
 
-    printf("Starting %s with count %d/%s\n",currCommand,threadCount,currParameter1);
+    // updated to match assmt format
+    printf("Running %d threads\n", threadCount);
 
     tinfo = calloc(threadCount, sizeof(pthread_t));
     if (tinfo == NULL) {
@@ -188,7 +185,7 @@ int main (void) {
         pthread_join(tinfo[i], &res);
     }
 
-    finalPrint(table);
+    finalPrint(table); 
 
     fclose(in);
     return 0;
