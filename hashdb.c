@@ -43,6 +43,14 @@ list * create_list() {
     return ret;
 }
 
+void print(list *table) {
+    hashRecord *cur = table->head;
+    while (cur) {
+       printf("%u,%s,%d\n", cur->hash, cur->name, cur->salary);
+       cur = cur->next;
+    }
+}
+
 hashRecord * create_record(char *key, uint32_t value, uint32_t hash) {
     hashRecord *ret = (hashRecord *) malloc(sizeof(hashRecord));
     strcpy(ret->name, key);
@@ -166,7 +174,7 @@ hashRecord * search(char *key, list *table) {
         }
         else {
             // print hash, name, and salary of the record, then return
-            printf("%d,%s,%d\n", cur->hash, cur->name, cur->salary);
+            printf("%u,%s,%d\n", cur->hash, cur->name, cur->salary);
             return cur;
         }
     }

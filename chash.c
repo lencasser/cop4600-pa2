@@ -1,4 +1,6 @@
 // chash.c file
+#include <ctype.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,23 +12,20 @@
 #include "hashdb.h"
 #include "hashdb.c"
 
-static int acquisitions = 0;
-static int releases = 0;
-
-void print(list *table) {
-    hashRecord *cur = table->head;
-    while (cur != NULL) {
-        printf("%u,%s,%d\n", cur->hash, cur->name, cur->salary);
-        cur = cur->next;
-    }
-}
 
 void finalPrint(list *table) {
-    printf("Number of lock acquisitions: %d\n", acquisitions); //TODO count number of lock acquisitions and releases
-    printf("Number of lock releases: %d\n", releases);
-    printf("Final Table:\n");
+    printf("Number of lock acquisitions: %d\n", lock_acquisitions); //TODO count number of lock acquisitions and releases
+    printf("Number of lock releases: %d\n", lock_releases);
     print(table);
 }
+
+struct parseParams
+{
+    char currCommand[1000];
+    char currParameter1[1000];
+    char currParameter2[1000];
+    list *table;
+};
 
 
 void parseCommand(char* currCommand, char* currParameter1, char* currParameter2, list *table) {
@@ -41,40 +40,39 @@ void parseCommand(char* currCommand, char* currParameter1, char* currParameter2,
         // the insert function computes the hash first
 
         rwlock_acquire_writelock(table->lock);
-        acquisitions++;
         insert(currParameter1, atoi(currParameter2), table);
         rwlock_release_writelock(table->lock);
-        releases++;
     }
     else if (strcmp(currCommand,"print")==0) {
         rwlock_acquire_readlock(table->lock);
-        acquisitions++;
         print(table);
         rwlock_release_readlock(table->lock);
-        releases++;
     }
     else if (strcmp(currCommand,"search")==0) {
         // again i might be missing something huge here and maybe
         // we can remove table as a parameter after all. for now,
         // edited in accordance with hashdb.c function structure
         rwlock_acquire_readlock(table->lock);
-        acquisitions++;
         search(currParameter1, table);
         rwlock_release_readlock(table->lock);
-        releases++;
     }
     else if (strcmp(currCommand,"delete")==0) {
         rwlock_acquire_writelock(table->lock);
-        acquisitions++;
         delete(currParameter1, table);
         rwlock_release_writelock(table->lock);
-        releases++;
     }
     else {
         printf("Command %s not found", currCommand);
     }
 
     return;
+}
+
+void *parseCommandThreadWrapper(void *arg)
+{
+    struct parseParams *p = (struct parseParams *) arg;
+    parseCommand(p->currCommand, p->currParameter1, p->currParameter2, p->table);
+    free(arg);
 }
 
 int main (void) {
@@ -94,6 +92,8 @@ int main (void) {
     char currParameter2[1000];
     int i = 0;
     int j = 0;
+    pthread_t  *tinfo;
+    int thread_index = 0;
 
     // creating hash table in advance wee
     list *table = create_list();
@@ -120,10 +120,13 @@ int main (void) {
 
     int threadCount = atoi(currParameter1);
 
-    pthread_t *threads = (pthread_t *)malloc((sizeof(pthread_t)) * threadCount);
-
     printf("Starting %s with count %d/%s\n",currCommand,threadCount,currParameter1);
 
+    tinfo = calloc(threadCount, sizeof(pthread_t));
+    if (tinfo == NULL) {
+        printf("ERROR: calloc failed\n");
+        return 0;
+    }
 
     while(currentWord != NULL) { //If we're not at the end of the file yet
         if(!fgets(currentWord,1000,(FILE*)in)) break;
@@ -162,12 +165,28 @@ int main (void) {
         }
         currParameter2[j] = '\0';
 
-        printf("%s%s%s\n", currCommand,currParameter1,currParameter2);
+        //printf("%s%s%s\n", currCommand,currParameter1,currParameter2);
 
-        parseCommand(currCommand,currParameter1,currParameter2, table);
-        
+        // parseCommand(currCommand,currParameter1,currParameter2, table);
+        if (thread_index > threadCount) {
+            printf("no threads left\n");
+            exit(0);
+        }
+
+        struct parseParams *p = (struct parseParams *)malloc(sizeof(struct parseParams));
+        strncpy(p->currCommand, currCommand, sizeof(currCommand));
+        strncpy(p->currParameter1, currParameter1, sizeof(currParameter1));
+        strncpy(p->currParameter2, currParameter2, sizeof(currParameter2));
+        p->table = table;
+        pthread_create(&tinfo[thread_index], NULL, parseCommandThreadWrapper, (void *)p);
+        thread_index++;
     }
 
+    for(int i=0;i<threadCount;i++)
+    {
+        void *res;
+        pthread_join(tinfo[i], &res);
+    }
 
     finalPrint(table);
 

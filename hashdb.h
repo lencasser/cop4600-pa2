@@ -22,5 +22,6 @@ extern hashRecord * create_record(char *key, uint32_t value, uint32_t hash);
 extern void insert(char *key, int value, list *table);
 extern void delete(char *key, list *table);
 extern hashRecord * search(char *key, list *table);
+extern void print(list *table);
 
 #endif
