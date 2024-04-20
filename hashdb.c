@@ -1,192 +1,183 @@
-// chash.c file
-#include <ctype.h>
-#include <errno.h>
+// locks have NOT been implemented yet.
+// this thing is like super fucked up
+// feel free to fix anything in the meantime, if not i'll just
+// come back to it when i'm less stupid tomorrow
+
+// this file has said "less stupid tomorrow" for 2 days now.
+// will the day i become less stupid ever come?
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
-#include <pthread.h>
-#include <semaphore.h>
-
-#include "rwlocks.h"
-//#include "rwlocks.c"
 #include "hashdb.h"
-#include "hashdb.c"
+#include "rwlocks.h"
 
+uint32_t jenkins_hash(char *key, size_t length) {
+    size_t i = 0;
+    uint32_t hash = 0;
+    
+    while (i != length) {
+        hash += key[i++];
+        hash += hash << 10;
+        hash ^= hash >> 6;
+    }
 
-void finalPrint(list *table) {
-    //printf("Number of lock acquisitions: %d\n", lock_acquisitions); //TODO count number of lock acquisitions and releases
-    //printf("Number of lock releases: %d\n", lock_releases);
-    // HAS ERROR NOW FOR SOME REASON i'm scared to touch it
+    hash += hash << 3;
+    hash ^= hash >> 11;
+    hash += hash << 15;
 
-    print(table);
+    return hash;
 }
 
-struct parseParams
-{
-    char currCommand[1000];
-    char currParameter1[1000];
-    char currParameter2[1000];
-    list *table;
-};
-
-
-void parseCommand(char* currCommand, char* currParameter1, char* currParameter2, list *table) {
+list * create_list() {
+    list *ret = (list *) malloc(sizeof(list));
+    ret->head = NULL;
     
-    if (strcmp(currCommand,"insert")==0) {
-        int value = atoi(currParameter1);
-        
-        // srra note: i know the TODO said add hash, but you don't
-        // actually need the hash as a parameter since aedo said
-        // the insert function computes the hash first
+    // originally had the below lines bc of the powerpoint lock LL 
+    // example but it's not working and some guy in the discord didn't
+    // have the lock in their list struct and i trust them with my life
 
-        rwlock_acquire_writelock(table->lock);
-        insert(currParameter1, atoi(currParameter2), table);
-        rwlock_release_writelock(table->lock);
-    }
-    else if (strcmp(currCommand,"print")==0) {
-        rwlock_acquire_readlock(table->lock);
-        print(table);
-        rwlock_release_readlock(table->lock);
-    }
-    else if (strcmp(currCommand,"search")==0) {
-        // again i might be missing something huge here and maybe
-        // we can remove table as a parameter after all. for now,
-        // edited in accordance with hashdb.c function structure
-        rwlock_acquire_readlock(table->lock);
-        search(currParameter1, table);
-        rwlock_release_readlock(table->lock);
-    }
-    else if (strcmp(currCommand,"delete")==0) {
-        rwlock_acquire_writelock(table->lock);
-        delete(currParameter1, table);
-        rwlock_release_writelock(table->lock);
-    }
-    else {
-        printf("Command %s not found", currCommand);
-    }
+    ret->lock = (rwlock_t *) malloc(sizeof(rwlock_t));
+    rwlock_init(ret->lock);
+    return ret;
+}
 
+void print(list *table) {
+    hashRecord *cur = table->head;
+    while (cur) {
+       printf("%u,%s,%d\n", cur->hash, cur->name, cur->salary);
+       cur = cur->next;
+    }
+}
+
+hashRecord * create_record(char *key, uint32_t value, uint32_t hash) {
+    hashRecord *ret = (hashRecord *) malloc(sizeof(hashRecord));
+    strcpy(ret->name, key);
+    ret->salary = value;
+    ret->hash = hash;
+    ret->next = NULL;
+    return ret;
+}
+
+// NOTE: char *key is const uint8_t in wikipedia hash func. if issues
+// arise, maybe change back, but hey. what could happpen. ahfhfhgh
+void insert(char *key, int value, list *table) {
+    printf("INSERT,%s,%d\n", key, value);
+    uint32_t hash = jenkins_hash(key, strlen(key));
+    // TODO: write writer lock acquisition
+
+    // this is so convoluted i'm so sorry
+    hashRecord *cur = table->head;
+    hashRecord *tmp;
+    hashRecord *prev;
+
+    // store the pointer to avoid searching twice.
+    // the thing i use tmp for varies which is confusing but i'm tired
+    tmp = search(key, table);
+    if(tmp != NULL) {
+        // go straight to the record and update it... i guess
+        tmp->salary = value;
+    }
+    // hash not in table
+    else { 
+        if(table->head == NULL) {
+            // empty case
+            tmp = create_record(key, value, hash);
+            table->head = tmp;
+        }
+        // one node case
+        else if (table->head->next == NULL) {
+            tmp = create_record(key, value, hash);
+
+            if(table->head->hash < hash) {
+                // tmp has a smaller hash value, insert at front
+                tmp->next = table->head;
+                table->head = tmp;
+            }
+            // tmp larger, insert after head
+            else table->head->next = tmp;
+        }
+        else {
+            // i'm doing it like this since it has to be in sorted order..
+            // this is fucked up but i'm basically trying to find where to
+            // insert the node i guess
+            while(cur->next != NULL && cur->hash <= hash)
+                cur = cur->next;
+            tmp = create_record(key, value, hash);
+
+            // our hash is smaller than head, i think...
+            if(cur == table->head) {
+                // is this logic even correct??ugh
+                tmp->next = table->head;
+                table->head = tmp;
+            }
+            else {
+                // a) the nice case. we are at the end of the list.
+                if(cur->next == NULL) cur->next = tmp;
+
+                // b) i am but god's little jester, powerless before the 
+                //    cop4600 sandwich.
+                else {
+                    // LOLOLOLOLOLOLOLOLOLOLOLOL
+                    prev = cur;
+                    cur = cur->next;
+                    prev->next = tmp;
+                    tmp->next = cur;
+                }
+            }
+        }
+    }
+    // TODO: release write lock
     return;
 }
 
-void *parseCommandThreadWrapper(void *arg)
-{
-    struct parseParams *p = (struct parseParams *) arg;
-    parseCommand(p->currCommand, p->currParameter1, p->currParameter2, p->table);
-    free(arg);
+void delete(char *key, list *table) {
+    printf("DELETE,%s\n", key);
+    uint32_t hash = jenkins_hash(key, strlen(key));
+    // TODO: writer lock acquisition
+    hashRecord *tmp = search(key, table);
+    hashRecord *cur = table->head;
+    if(tmp != NULL) {
+        if(tmp->next == NULL) {
+            // tmp is only list item
+            table->head = NULL;
+            free(tmp);
+        }
+        else {
+            // this is so inefficient but today is not the day i
+            // become smart either
+            while (cur->next != NULL && cur->next->hash != hash) {
+                // should already be sorted by hash or so i hope :(
+                if(cur->hash < hash) cur = cur->next;
+            }
+            // connecting the 2 nodes around tmp
+            cur->next = tmp->next;
+            free(tmp);
+        }
+    }
+    // TODO: release write lock
+    return;
 }
 
-int main (void) {
-    FILE *in;
+hashRecord * search(char *key, list *table) {
+    printf("SEARCH,%s\n", key);
+    if(table->head == NULL) return NULL;
 
-    in = fopen("commands.txt", "r");
+    // step 1: compute hash value
+    uint32_t hash = jenkins_hash(key, strlen(key));
 
-    char currentWord[10000];
-    char currChar;
-    int currentWordIdx = 0;
-    int state = 0;
-    char currCommand[1000];
-    char currParameter1[1000];
-    char currParameter2[1000];
-    int i = 0;
-    int j = 0;
-    pthread_t  *tinfo;
-    int thread_index = 0;
-
-    // creating hash table in advance wee
-    list *table = create_list();
-
-    // Read the content and print it
-    //fscanf(in, "%s", currentWord);
-    fgets(currentWord,1000,in);
-
-    for (i=0;currentWord[i] != ',';i++) {
-        currCommand[i] = currentWord[i];
-    }
-
-    if (strcmp(currCommand,"threads") != 0) {
-        printf("ERROR: First command is not THREAD\nExiting\n");
-        return 0;
-    }
-
-    i++;
-    for (j=0;currentWord[i] != ',';i++) {
-        currParameter1[j] = currentWord[i];
-        j++;
-    }
-
-    int threadCount = atoi(currParameter1);
-
-    // updated to match assmt format
-    printf("Running %d threads\n", threadCount);
-
-    tinfo = calloc(threadCount, sizeof(pthread_t));
-    if (tinfo == NULL) {
-        printf("ERROR: calloc failed\n");
-        return 0;
-    }
-
-    while(currentWord != NULL) { //If we're not at the end of the file yet
-        if(!fgets(currentWord,1000,(FILE*)in)) break;
-
-        //printf("%s\n", currentWord);
-
-        i=0;
-        strcpy(currCommand,"");
-        strcpy(currParameter1,"");
-        strcpy(currParameter2,"");
-
-        //printf("earlyCommand: %s\n", currCommand);
-
-        for (i=0;currentWord[i] != ',';i++) {
-            currCommand[i] = currentWord[i];
+    // iterate through list & compare hash
+    hashRecord *cur = table->head;
+    while(cur->next != NULL) {
+        if(cur->hash != hash) {
+            cur = cur->next;
         }
-        currCommand[i] = '\0';
-
-        //printf("currComand: %s\n", currCommand);
-
-        i++; //Move index out of ','
-
-        for (j=0;currentWord[i] != ',';i++) {
-            currParameter1[j] = currentWord[i];
-            j++;
+        else {
+            // print hash, name, and salary of the record, then return
+            printf("%u,%s,%d\n", cur->hash, cur->name, cur->salary);
+            return cur;
         }
-        currParameter1[j] = '\0';
-
-        //printf("curr1: %s\n", currParameter1);
-
-        i++; //Move index out of ','
-
-        for (j=0;currentWord[i] != '\n';i++) {
-            currParameter2[j] = currentWord[i];
-            j++;
-        }
-        currParameter2[j] = '\0';
-
-        //printf("%s%s%s\n", currCommand,currParameter1,currParameter2);
-
-        // parseCommand(currCommand,currParameter1,currParameter2, table);
-        if (thread_index > threadCount) {
-            printf("no threads left\n");
-            exit(0);
-        }
-
-        struct parseParams *p = (struct parseParams *)malloc(sizeof(struct parseParams));
-        strncpy(p->currCommand, currCommand, sizeof(currCommand));
-        strncpy(p->currParameter1, currParameter1, sizeof(currParameter1));
-        strncpy(p->currParameter2, currParameter2, sizeof(currParameter2));
-        p->table = table;
-        pthread_create(&tinfo[thread_index], NULL, parseCommandThreadWrapper, (void *)p);
-        thread_index++;
     }
-
-    for(int i=0;i<threadCount;i++)
-    {
-        void *res;
-        pthread_join(tinfo[i], &res);
-    }
-
-    finalPrint(table); 
-
-    fclose(in);
-    return 0;
+    return NULL;
 }
