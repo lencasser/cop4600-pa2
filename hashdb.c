@@ -63,7 +63,6 @@ hashRecord * create_record(char *key, uint32_t value, uint32_t hash) {
 // NOTE: char *key is const uint8_t in wikipedia hash func. if issues
 // arise, maybe change back, but hey. what could happpen. ahfhfhgh
 void insert(char *key, int value, list *table) {
-    printf("INSERT,%s,%d\n", key, value);
     uint32_t hash = jenkins_hash(key, strlen(key));
     // TODO: write writer lock acquisition
 
@@ -119,7 +118,9 @@ void insert(char *key, int value, list *table) {
                 // b) i am but god's little jester, powerless before the 
                 //    cop4600 sandwich.
                 else {
-                    // LOLOLOLOLOLOLOLOLOLOLOLOL
+                    // i may be making a sloppy mistake here but i'm basically
+                    // trying to disassemble the list and then reattach it
+                    // with the new node sandwiched in the middle
                     prev = cur;
                     cur = cur->next;
                     prev->next = tmp;
@@ -133,7 +134,6 @@ void insert(char *key, int value, list *table) {
 }
 
 void delete(char *key, list *table) {
-    printf("DELETE,%s\n", key);
     uint32_t hash = jenkins_hash(key, strlen(key));
     // TODO: writer lock acquisition
     hashRecord *tmp = search(key, table);
@@ -161,7 +161,6 @@ void delete(char *key, list *table) {
 }
 
 hashRecord * search(char *key, list *table) {
-    printf("SEARCH,%s\n", key);
     if(table->head == NULL) return NULL;
 
     // step 1: compute hash value
