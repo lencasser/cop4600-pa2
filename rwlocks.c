@@ -14,7 +14,7 @@ void rwlock_acquire_readlock(rwlock_t *lock) {
     if (lock->readers == 1)
 	sem_wait(&lock->writelock);
     sem_post(&lock->lock);
-    printf("READ LOCK ACQUIRED");
+    printf("READ LOCK ACQUIRED\n");
 }
 
 void rwlock_release_readlock(rwlock_t *lock) {
@@ -23,15 +23,15 @@ void rwlock_release_readlock(rwlock_t *lock) {
     if (lock->readers == 0)
 	sem_post(&lock->writelock);
     sem_post(&lock->lock);
-    printf("READ LOCK RELEASED");
+    printf("READ LOCK RELEASED\n");
 }
 
 void rwlock_acquire_writelock(rwlock_t *lock) {
     sem_wait(&lock->writelock);
-    printf("WRITE LOCK ACQUIRED");
+    printf("WRITE LOCK ACQUIRED\n");
 }
 
 void rwlock_release_writelock(rwlock_t *lock) {
     sem_post(&lock->writelock);
-    printf("WRITE LOCK RELEASED");
+    printf("WRITE LOCK RELEASED\n");
 }

@@ -16,8 +16,8 @@ void print() {
 }
 
 void finalPrint() {
-    printf("Number of lock acquisitions: \n"); //TODO count number of lock acquisitions and releases
-    printf("Number of lock releases: \n");
+    printf("Number of lock acquisitions: %d\n", 0); //TODO count number of lock acquisitions and releases
+    printf("Number of lock releases: %d\n", 0);
     print();
 }
 
@@ -33,8 +33,9 @@ void parseCommand(char* currCommand, char* currParameter1, char* currParameter2,
         // actually need the hash as a parameter since aedo said
         // the insert function computes the hash first
 
+        rwlock_acquire_writelock(table->lock);
         insert(currParameter1, atoi(currParameter2), table);
-        
+        rwlock_release_writelock(table->lock);
     }
     else if (strcmp(currCommand,"print")==0) {
         rwlock_acquire_readlock(table->lock);
@@ -45,10 +46,14 @@ void parseCommand(char* currCommand, char* currParameter1, char* currParameter2,
         // again i might be missing something huge here and maybe
         // we can remove table as a parameter after all. for now,
         // edited in accordance with hashdb.c function structure
+        rwlock_acquire_readlock(table->lock);
         search(currParameter1, table);
+        rwlock_release_readlock(table->lock);
     }
     else if (strcmp(currCommand,"delete")==0) {
+        rwlock_acquire_writelock(table->lock);
         delete(currParameter1, table);
+        rwlock_release_writelock(table->lock);
     }
     else {
         printf("Command %s not found", currCommand);

@@ -40,6 +40,7 @@ list * create_list() {
 
     ret->lock = (rwlock_t *) malloc(sizeof(rwlock_t));
     rwlock_init(ret->lock);
+    return ret;
 }
 
 hashRecord * create_record(char *key, uint32_t value, uint32_t hash) {
@@ -157,8 +158,6 @@ hashRecord * search(char *key, list *table) {
     // step 1: compute hash value
     uint32_t hash = jenkins_hash(key, strlen(key));
 
-    // TODO: reader lock acquisition
-
     // iterate through list & compare hash
     hashRecord *cur = table->head;
     while(cur->next != NULL) {
@@ -168,12 +167,8 @@ hashRecord * search(char *key, list *table) {
         else {
             // print hash, name, and salary of the record, then return
             printf("%d,%s,%d\n", cur->hash, cur->name, cur->salary);
-            //TODO: lock release
-            
             return cur;
         }
     }
-    printf("No Record Found\n");
-    // TODO: lock release
     return NULL;
 }
