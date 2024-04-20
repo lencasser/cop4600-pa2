@@ -12,44 +12,42 @@
 
 
 void print() {
-    
+    printf("TODO\n");
 }
 
 void finalPrint() {
-    printf("Number of lock acquisitions: "); //TODO count number of lock acquisitions and releases
-    printf("Number of lock releases: ");
+    printf("Number of lock acquisitions: \n"); //TODO count number of lock acquisitions and releases
+    printf("Number of lock releases: \n");
     print();
 }
 
-// so sorry if adding the list *table ptrs to everything is wrong
+
 void parseCommand(char* currCommand, char* currParameter1, char* currParameter2, list *table) {
-    print("%s", currCommand);
-    if (strcmp(currCommand,"threads")) {
-        return;
-    }
-    else if (strcmp(currCommand,"insert")) {
+    
+    printf("Command: %s\n", currCommand);
+    
+    if (strcmp(currCommand,"insert")==0) {
         int value = atoi(currParameter1);
         
         // srra note: i know the TODO said add hash, but you don't
         // actually need the hash as a parameter since aedo said
         // the insert function computes the hash first
 
-        // the passing in of table and stuff might change depending on
-        // how the lock stuff is set up (?) and like. um. idk   . ah
         insert(currParameter1, atoi(currParameter2), table);
+        
     }
-    else if (strcmp(currCommand,"print")) {
-        //TODO: Get read lock
+    else if (strcmp(currCommand,"print")==0) {
+        rwlock_acquire_readlock(table->lock);
         print();
-        //TODO: Release read lock
+        rwlock_release_readlock(table->lock);
     }
-    else if (strcmp(currCommand,"search")) {
+    else if (strcmp(currCommand,"search")==0) {
         // again i might be missing something huge here and maybe
         // we can remove table as a parameter after all. for now,
         // edited in accordance with hashdb.c function structure
         search(currParameter1, table);
     }
-    else if (strcmp(currCommand,"delete")) {
+    else if (strcmp(currCommand,"delete")==0) {
         delete(currParameter1, table);
     }
     else {
@@ -108,7 +106,7 @@ int main (void) {
     while(currentWord != NULL) { //If we're not at the end of the file yet
         if(!fgets(currentWord,1000,(FILE*)in)) break;
 
-        printf("%s\n", currentWord);
+        //printf("%s\n", currentWord);
 
         i=0;
         strcpy(currCommand,"");
@@ -122,7 +120,7 @@ int main (void) {
         }
         currCommand[i] = '\0';
 
-        printf("currComand: %s\n", currCommand);
+        //printf("currComand: %s\n", currCommand);
 
         i++; //Move index out of ','
 
@@ -132,7 +130,7 @@ int main (void) {
         }
         currParameter1[j] = '\0';
 
-        printf("curr1: %s\n", currParameter1);
+        //printf("curr1: %s\n", currParameter1);
 
         i++; //Move index out of ','
 
@@ -144,12 +142,12 @@ int main (void) {
 
         printf("%s%s%s\n", currCommand,currParameter1,currParameter2);
 
-        //parseCommand(currCommand,currParameter1,currParameter2, table);
+        parseCommand(currCommand,currParameter1,currParameter2, table);
         
     }
 
 
-    printf("Done!\n");
+    finalPrint();
 
     fclose(in);
     return 0;
