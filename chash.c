@@ -10,15 +10,22 @@
 #include "hashdb.h"
 #include "hashdb.c"
 
+static int acquisitions = 0;
+static int releases = 0;
 
-void print() {
-    printf("TODO\n");
+void print(list *table) {
+    hashRecord *cur = table->head;
+    while (cur != NULL) {
+        printf("%u,%s,%d\n", cur->hash, cur->name, cur->salary);
+        cur = cur->next;
+    }
 }
 
-void finalPrint() {
-    printf("Number of lock acquisitions: %d\n", 0); //TODO count number of lock acquisitions and releases
-    printf("Number of lock releases: %d\n", 0);
-    print();
+void finalPrint(list *table) {
+    printf("Number of lock acquisitions: %d\n", acquisitions); //TODO count number of lock acquisitions and releases
+    printf("Number of lock releases: %d\n", releases);
+    printf("Final Table:\n");
+    print(table);
 }
 
 
@@ -34,26 +41,34 @@ void parseCommand(char* currCommand, char* currParameter1, char* currParameter2,
         // the insert function computes the hash first
 
         rwlock_acquire_writelock(table->lock);
+        acquisitions++;
         insert(currParameter1, atoi(currParameter2), table);
         rwlock_release_writelock(table->lock);
+        releases++;
     }
     else if (strcmp(currCommand,"print")==0) {
         rwlock_acquire_readlock(table->lock);
-        print();
+        acquisitions++;
+        print(table);
         rwlock_release_readlock(table->lock);
+        releases++;
     }
     else if (strcmp(currCommand,"search")==0) {
         // again i might be missing something huge here and maybe
         // we can remove table as a parameter after all. for now,
         // edited in accordance with hashdb.c function structure
         rwlock_acquire_readlock(table->lock);
+        acquisitions++;
         search(currParameter1, table);
         rwlock_release_readlock(table->lock);
+        releases++;
     }
     else if (strcmp(currCommand,"delete")==0) {
         rwlock_acquire_writelock(table->lock);
+        acquisitions++;
         delete(currParameter1, table);
         rwlock_release_writelock(table->lock);
+        releases++;
     }
     else {
         printf("Command %s not found", currCommand);
@@ -105,6 +120,8 @@ int main (void) {
 
     int threadCount = atoi(currParameter1);
 
+    pthread_t *threads = (pthread_t *)malloc((sizeof(pthread_t)) * threadCount);
+
     printf("Starting %s with count %d/%s\n",currCommand,threadCount,currParameter1);
 
 
@@ -152,7 +169,7 @@ int main (void) {
     }
 
 
-    finalPrint();
+    finalPrint(table);
 
     fclose(in);
     return 0;
