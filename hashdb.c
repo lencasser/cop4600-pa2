@@ -122,19 +122,18 @@ void delete(char *key, list *table,FILE* out) {
             table->head = NULL;
             free(tmp);
         }
-        else {
-            while (cur->next != NULL && cur->next->hash != hash) {
-                if (cur->hash < hash) cur = cur->next;
-                //else cur = table->head;
-            }
-
-            //printf("boop,%d %d\n", cur->hash, cur->next->hash);
-
-            // connecting the 2 nodes around tmp
-            cur->next = tmp->next;
+        else if(temp == table->head) { //tmp is at the head of the table
+            table->head = tmp->next; 
             free(tmp);
-
-            //printf("goopie pie\n");
+        }
+        else {
+            while (cur != NULL && cur->next != tmp) {
+                cur = cur->next;
+            }
+            if(cur != NULL) {
+                cur->next = tmp->next;
+                free(tmp);
+            }
         }
     }
     return;
