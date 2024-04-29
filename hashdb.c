@@ -1,10 +1,3 @@
-// locks have NOT been implemented yet.
-// this thing is like super fucked up
-// feel free to fix anything in the meantime, if not i'll just
-// come back to it when i'm less stupid tomorrow
-
-// this file has said "less stupid tomorrow" for 2 days now.
-// will the day i become less stupid ever come?
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,20 +26,18 @@ uint32_t jenkins_hash(char *key, size_t length) {
 list * create_list() {
     list *ret = (list *) malloc(sizeof(list));
     ret->head = NULL;
-    
-    // originally had the below lines bc of the powerpoint lock LL 
-    // example but it's not working and some guy in the discord didn't
-    // have the lock in their list struct and i trust them with my life
+  
 
     ret->lock = (rwlock_t *) malloc(sizeof(rwlock_t));
     rwlock_init(ret->lock);
     return ret;
 }
 
-void print(list *table) {
+void print(list *table, FILE *out) {
     hashRecord *cur = table->head;
     while (cur) {
        printf("%u,%s,%d\n", cur->hash, cur->name, cur->salary);
+       fprintf(out, "%u,%s,%d\n", cur->hash, cur->name, cur->salary);
        cur = cur->next;
     }
 }
@@ -60,23 +51,16 @@ hashRecord * create_record(char *key, uint32_t value, uint32_t hash) {
     return ret;
 }
 
-// NOTE: char *key is const uint8_t in wikipedia hash func. if issues
-// arise, maybe change back, but hey. what could happpen. ahfhfhgh
-void insert(char *key, int value, list *table) {
-    printf("INSERT,%s,%d\n", key, value);
+void insert(char *key, int value, list *table,FILE *out) {
     uint32_t hash = jenkins_hash(key, strlen(key));
-    // TODO: write writer lock acquisition
 
-    // this is so convoluted i'm so sorry
     hashRecord *cur = table->head;
     hashRecord *tmp;
     hashRecord *prev;
 
-    // store the pointer to avoid searching twice.
-    // the thing i use tmp for varies which is confusing but i'm tired
-    tmp = search(key, table);
+    tmp = search(key, table, out);
     if(tmp != NULL) {
-        // go straight to the record and update it... i guess
+        // go straight to the record and update it
         tmp->salary = value;
     }
     // hash not in table
@@ -99,9 +83,6 @@ void insert(char *key, int value, list *table) {
             else table->head->next = tmp;
         }
         else {
-            // i'm doing it like this since it has to be in sorted order..
-            // this is fucked up but i'm basically trying to find where to
-            // insert the node i guess
             while(cur->next != NULL && cur->hash <= hash)
                 cur = cur->next;
             tmp = create_record(key, value, hash);
@@ -116,10 +97,9 @@ void insert(char *key, int value, list *table) {
                 // a) the nice case. we are at the end of the list.
                 if(cur->next == NULL) cur->next = tmp;
 
-                // b) i am but god's little jester, powerless before the 
-                //    cop4600 sandwich.
+
                 else {
-                    // LOLOLOLOLOLOLOLOLOLOLOLOL
+  
                     prev = cur;
                     cur = cur->next;
                     prev->next = tmp;
@@ -128,15 +108,13 @@ void insert(char *key, int value, list *table) {
             }
         }
     }
-    // TODO: release write lock
+    
     return;
 }
 
-void delete(char *key, list *table) {
-    printf("DELETE,%s\n", key);
+void delete(char *key, list *table,FILE* out) {
     uint32_t hash = jenkins_hash(key, strlen(key));
-    // TODO: writer lock acquisition
-    hashRecord *tmp = search(key, table);
+    hashRecord *tmp = search(key, table,out);
     hashRecord *cur = table->head;
     if(tmp != NULL) {
         if(tmp->next == NULL) {
@@ -145,23 +123,24 @@ void delete(char *key, list *table) {
             free(tmp);
         }
         else {
-            // this is so inefficient but today is not the day i
-            // become smart either
             while (cur->next != NULL && cur->next->hash != hash) {
-                // should already be sorted by hash or so i hope :(
-                if(cur->hash < hash) cur = cur->next;
+                if (cur->hash < hash) cur = cur->next;
+                //else cur = table->head;
             }
+
+            //printf("boop,%d %d\n", cur->hash, cur->next->hash);
+
             // connecting the 2 nodes around tmp
             cur->next = tmp->next;
             free(tmp);
+
+            //printf("goopie pie\n");
         }
     }
-    // TODO: release write lock
     return;
 }
 
-hashRecord * search(char *key, list *table) {
-    printf("SEARCH,%s\n", key);
+hashRecord * search(char *key, list *table, FILE *out) {
     if(table->head == NULL) return NULL;
 
     // step 1: compute hash value
@@ -176,6 +155,7 @@ hashRecord * search(char *key, list *table) {
         else {
             // print hash, name, and salary of the record, then return
             printf("%u,%s,%d\n", cur->hash, cur->name, cur->salary);
+            fprintf(out, "%u,%s,%d\n", cur->hash, cur->name, cur->salary);
             return cur;
         }
     }

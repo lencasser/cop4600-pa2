@@ -20,13 +20,13 @@ void rwlock_init(rwlock_t *lock);
 //read locks only block writers. Writer locks block everyone
 
 //acquires the lock for a reader
-void rwlock_acquire_readlock(rwlock_t *lock);
+void rwlock_acquire_readlock(rwlock_t *lock, FILE *out);
 //releases the lock for a reader
-void rwlock_release_readlock(rwlock_t *lock);
+void rwlock_release_readlock(rwlock_t *lock, FILE* out);
 
 //acquires the lock for a writer
-void rwlock_acquire_writelock(rwlock_t *lock);
+void rwlock_acquire_writelock(rwlock_t *lock, FILE* out);
 //releases the lock for a writer
-void rwlock_release_writelock(rwlock_t *lock);
+void rwlock_release_writelock(rwlock_t *lock, FILE* out);
 
 #endif

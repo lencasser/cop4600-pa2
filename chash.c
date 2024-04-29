@@ -12,13 +12,14 @@
 #include "hashdb.h"
 #include "hashdb.c"
 
+FILE* out;
 
-void finalPrint(list *table) {
-    //printf("Number of lock acquisitions: %d\n", lock_acquisitions); //TODO count number of lock acquisitions and releases
-    //printf("Number of lock releases: %d\n", lock_releases);
-    // HAS ERROR NOW FOR SOME REASON i'm scared to touch it
-
-    print(table);
+void finalPrint(list *table, FILE *out) {
+    printf("Number of lock acquisitions: %d\n", lock_acquisitions);
+    printf("Number of lock releases: %d\n", lock_releases);
+    fprintf(out, "Number of lock acquisitions: %d\n", lock_acquisitions);
+    fprintf(out, "Number of lock releases: %d\n", lock_releases);
+    print(table, out);
 }
 
 struct parseParams
@@ -30,36 +31,37 @@ struct parseParams
 };
 
 
-void parseCommand(char* currCommand, char* currParameter1, char* currParameter2, list *table) {
+void parseCommand(char* currCommand, char* currParameter1, char* currParameter2, list *table, FILE* out) {
+    
+    //printf("Command: %s\n", currCommand);
     
     if (strcmp(currCommand,"insert")==0) {
         int value = atoi(currParameter1);
-        
-        // srra note: i know the TODO said add hash, but you don't
-        // actually need the hash as a parameter since aedo said
-        // the insert function computes the hash first
 
-        rwlock_acquire_writelock(table->lock);
-        insert(currParameter1, atoi(currParameter2), table);
-        rwlock_release_writelock(table->lock);
+        printf("INSERT,%s,%s\n", currParameter1, currParameter2);
+        fprintf(out, "INSERT,%s,%s\n", currParameter1, currParameter2);
+        rwlock_acquire_writelock(table->lock,out);
+        insert(currParameter1, atoi(currParameter2), table, out);
+        rwlock_release_writelock(table->lock,out);
     }
     else if (strcmp(currCommand,"print")==0) {
-        rwlock_acquire_readlock(table->lock);
-        print(table);
-        rwlock_release_readlock(table->lock);
+        rwlock_acquire_readlock(table->lock,out);
+        print(table,out);
+        rwlock_release_readlock(table->lock,out);
     }
     else if (strcmp(currCommand,"search")==0) {
-        // again i might be missing something huge here and maybe
-        // we can remove table as a parameter after all. for now,
-        // edited in accordance with hashdb.c function structure
-        rwlock_acquire_readlock(table->lock);
-        search(currParameter1, table);
-        rwlock_release_readlock(table->lock);
+        printf("SEARCH,%s\n", currParameter1);
+        fprintf(out, "SEARCH,%s\n", currParameter1);
+        rwlock_acquire_readlock(table->lock,out);
+        search(currParameter1, table, out);
+        rwlock_release_readlock(table->lock,out);
     }
     else if (strcmp(currCommand,"delete")==0) {
-        rwlock_acquire_writelock(table->lock);
-        delete(currParameter1, table);
-        rwlock_release_writelock(table->lock);
+        printf("DELETE,%s\n", currParameter1);
+        fprintf(out, "DELETE,%s\n", currParameter1);
+        rwlock_acquire_writelock(table->lock,out);
+        delete(currParameter1, table, out);
+        rwlock_release_writelock(table->lock,out);
     }
     else {
         printf("Command %s not found", currCommand);
@@ -71,14 +73,17 @@ void parseCommand(char* currCommand, char* currParameter1, char* currParameter2,
 void *parseCommandThreadWrapper(void *arg)
 {
     struct parseParams *p = (struct parseParams *) arg;
-    parseCommand(p->currCommand, p->currParameter1, p->currParameter2, p->table);
+    parseCommand(p->currCommand, p->currParameter1, p->currParameter2, p->table, out);
     free(arg);
 }
 
 int main (void) {
-    FILE *in;
 
-    in = fopen("commands.txt", "r");
+    FILE *in;
+    //FILE* out;
+
+    in = fopen("alldelete.txt", "r"); //Change the text here to change the input file name
+    out = fopen("output.txt", "w");
 
     char currentWord[10000];
     char currChar;
@@ -98,6 +103,7 @@ int main (void) {
     // Read the content and print it
     //fscanf(in, "%s", currentWord);
     fgets(currentWord,1000,in);
+    //printf("%s",currentWord);
 
     for (i=0;currentWord[i] != ',';i++) {
         currCommand[i] = currentWord[i];
@@ -116,8 +122,8 @@ int main (void) {
 
     int threadCount = atoi(currParameter1);
 
-    // updated to match assmt format
-    printf("Running %d threads\n", threadCount);
+    printf("Running %d threads\n",threadCount);
+    fprintf(out, "Running %d threads\n", threadCount);
 
     tinfo = calloc(threadCount, sizeof(pthread_t));
     if (tinfo == NULL) {
@@ -128,21 +134,15 @@ int main (void) {
     while(currentWord != NULL) { //If we're not at the end of the file yet
         if(!fgets(currentWord,1000,(FILE*)in)) break;
 
-        //printf("%s\n", currentWord);
-
         i=0;
         strcpy(currCommand,"");
         strcpy(currParameter1,"");
         strcpy(currParameter2,"");
 
-        //printf("earlyCommand: %s\n", currCommand);
-
         for (i=0;currentWord[i] != ',';i++) {
             currCommand[i] = currentWord[i];
         }
         currCommand[i] = '\0';
-
-        //printf("currComand: %s\n", currCommand);
 
         i++; //Move index out of ','
 
@@ -152,8 +152,6 @@ int main (void) {
         }
         currParameter1[j] = '\0';
 
-        //printf("curr1: %s\n", currParameter1);
-
         i++; //Move index out of ','
 
         for (j=0;currentWord[i] != '\n';i++) {
@@ -162,9 +160,6 @@ int main (void) {
         }
         currParameter2[j] = '\0';
 
-        //printf("%s%s%s\n", currCommand,currParameter1,currParameter2);
-
-        // parseCommand(currCommand,currParameter1,currParameter2, table);
         if (thread_index > threadCount) {
             printf("no threads left\n");
             exit(0);
@@ -185,8 +180,9 @@ int main (void) {
         pthread_join(tinfo[i], &res);
     }
 
-    finalPrint(table); 
+    finalPrint(table,out);
 
     fclose(in);
+    fclose(out);
     return 0;
 }
